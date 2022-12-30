@@ -19,6 +19,7 @@ In the meantime, below is an example of what you can do with just a few lines of
 
 """
 # TODO
+- ADD DYNAMODB CREDENTIALS TO CLOUD VERSION
 - Dynamodb pages per month, and per top users
 - Search for Dynamodb Enterprise user specific usage
 """
