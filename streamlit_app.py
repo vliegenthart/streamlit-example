@@ -5,6 +5,8 @@ import pandas as pd
 import streamlit as st
 from dynamodb_class import Items, DecimalEncoder
 import json
+import datetime
+from benedict import benedict
 
 """
 # Welcome to Streamlit!
@@ -28,9 +30,14 @@ items_table = Items()
 
 
 def get_user():
-    user = items_table.query_user_by_email(st.session_state.email_input)
-    return json.loads(json.dumps(user, indent=4, cls=DecimalEncoder))
+    return items_table.query_user_by_email(st.session_state.email_input)
 
+
+def epoch_to_human(epoch):
+    return datetime.datetime.fromtimestamp(int(epoch) / 1000)
+
+
+st.write("# User Metrics")
 
 INIT_VALUE = "daniel@parsel.ai"
 
@@ -42,7 +49,7 @@ user_email = st.text_input(
     type="default",
     help=None,
     autocomplete=None,
-    on_change=get_user,
+    on_change=None,
     args=None,
     kwargs=None,
     placeholder=None,
@@ -50,8 +57,69 @@ user_email = st.text_input(
     label_visibility="visible",
 )
 
-output = get_user()
-st.write(output)
+
+user = get_user()
+
+
+st.checkbox(
+    "Show Detailed User Details",
+    value=False,
+    key="show_user",
+    help=None,
+    on_change=None,
+    disabled=False,
+    label_visibility="visible",
+)
+
+if st.session_state.show_user:
+    st.write(user)
+
+# st.write(user)
+
+is_enterprise = "enterprise" in user.get("gsi2Pk")
+st.write(f"**Is Enterprise Account**: {is_enterprise}")
+
+if is_enterprise:
+
+    enterprise = items_table.query_enterprise(user.get("gsi2Pk"))
+    enterprise_users = items_table.query_enterprise_users(user.get("gsi2Pk"))
+
+    # st.write(enterprise["trialQuota"], type(enterprise))
+    # st.write(enterprise_users)
+    st.write("#### Enterprise Users")
+
+    enterprise_users_df = pd.DataFrame(enterprise_users)
+    enterprise_users_df["createdAt"] = pd.to_datetime(
+        enterprise_users_df["createdAt"], unit="ms"
+    )
+    st.write(enterprise_users_df)
+
+    is_on_trial = enterprise.get("trialQuota") is not None
+
+    st.write(f"**Is On Trial**: {is_on_trial}")
+
+    if is_on_trial:
+        st.write(
+            f'**Trial started at**: {epoch_to_human(enterprise["trialQuota.createdAt"])}'
+        )
+
+        st.write(
+            f'**Trial Ends at**: {epoch_to_human(enterprise["trialQuota.endsAt"])}'
+        )
+        st.write(
+            f'**Page usage**: {enterprise["trialQuota.pagesConsumed"]}/{enterprise["trialQuota.pagesAllowed"]}'
+        )
+
+
+st.write("#### All Enterprise Datasets FIXME")
+
+datasets = items_table.query_user_datasets(user.get("pk"))
+
+df = pd.json_normalize(datasets, max_level=1)
+df["createdAt"] = pd.to_datetime(df["createdAt"], unit="ms")
+
+
+st.write(df)
 
 
 def lets_write_yo(data):

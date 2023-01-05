@@ -16,6 +16,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import logging
 import json
+from benedict import benedict
 
 logger = logging.getLogger(__name__)
 
@@ -85,18 +86,37 @@ class Items:
             return response
 
     def query_enterprise_users(self, enterprise_id):
-        return self.query(Key("gsi2Pk").eq(enterprise_id), "gsi-2")
+        try:
+
+            return self.query(Key("gsi2Pk").eq(enterprise_id), "gsi-2").get("Items")
+
+        except Exception as exc:
+            return None
+
+    def query_enterprise(self, enterprise_id):
+        try:
+            return benedict(
+                self.query(
+                    Key("pk").eq(enterprise_id) & Key("sk").eq("enterprise"),
+                    None,
+                    False,
+                ).get("Items")[0]
+            )
+        except Exception as exc:
+            return None
 
     def query_user_by_email(self, email):
         return self.query(Key("gsiPk").eq(f"user#{email}"), "gsi")["Items"][0]
 
     def query_user_datasets(self, user_id):
-        return self.query(Key("pk").eq(user_id), None, False)["Items"]
+        return self.query(
+            Key("pk").eq(user_id) & Key("sk").begins_with("dataset"), None, False
+        )["Items"]
 
     def query(
         self,
         key_condition_expression,
-        gsi_name=None,
+        index_name=None,
         is_index=True,
     ):
         """
@@ -106,7 +126,7 @@ class Items:
             if is_index:
 
                 response = self.table.query(
-                    IndexName=f"{self.table_name}-{gsi_name}",
+                    IndexName=f"{self.table_name}-{index_name}",
                     KeyConditionExpression=key_condition_expression,
                 )
             else:
@@ -121,7 +141,7 @@ class Items:
             )
             raise
         else:
-            return response
+            return benedict(dict(json.loads(json.dumps(response, cls=DecimalEncoder))))
 
 
 import decimal
