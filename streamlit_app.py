@@ -3,7 +3,7 @@ import altair as alt
 import math
 import pandas as pd
 import streamlit as st
-from dynamodb_class import Items, DecimalEncoder
+from dynamodb_class import Items, DecimalEncoder, create_presigned_url
 import json
 import datetime
 from benedict import benedict
@@ -87,7 +87,7 @@ if is_enterprise:
     # st.write(enterprise["trialQuota"], type(enterprise))
     # st.write(enterprise_users)
     st.write("#### Enterprise Users")
-
+    st.write("FIXMYATTRIBUTES + TEST WHAT HAPPENS WITH DIFFERENT USER INPUT")
     enterprise_users_df = pd.DataFrame(enterprise_users)
     enterprise_users_df["createdAt"] = pd.to_datetime(
         enterprise_users_df["createdAt"], unit="ms"
@@ -111,20 +111,56 @@ if is_enterprise:
         )
 
 
-st.write("#### All Enterprise Datasets FIXME")
+st.write("#### All Enterprise Account Datasets")
+st.write("If empty, loading...")
 
-datasets = items_table.query_user_datasets(user.get("pk"))
+
+datasets = []
+if is_enterprise:
+    for user in enterprise_users:
+        datasets = datasets + items_table.query_user_datasets(user.get("pk"))
+else:
+    datasets = items_table.query_user_datasets(user.get("pk"))
+
+
+keys_to_extract = [
+    "fileName",
+    "status",
+    "outputs",
+    "audit",
+    "name",
+    "createdAt",
+    "fileSize",
+    "deleted",
+    "pageCount",
+    "numberFormat",
+    "updatedAt",
+    "progress",
+    "key",
+]
+
+datasets = [
+    {key: item[key] for key in keys_to_extract if key in item} for item in datasets
+]
+
+
+for dataset in datasets:
+    if type(dataset.get("outputs")) == list:
+        for output in dataset.get("outputs"):
+            if output.get("s3Key"):
+                dataset[f"output_{output.get('format')}"] = create_presigned_url(
+                    output.get("s3Key")
+                )
+
+        dataset[f"input_document"] = create_presigned_url(dataset.get("key"))
+
+        del dataset["outputs"]
+        del dataset["key"]
 
 df = pd.json_normalize(datasets, max_level=1)
 df["createdAt"] = pd.to_datetime(df["createdAt"], unit="ms")
 
-
-st.write(df)
-
-
-def lets_write_yo(data):
-    st.write(data)
-
+st.write(enterprise_users_df)
 
 # with st.echo(code_location="below"):
 #     total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
