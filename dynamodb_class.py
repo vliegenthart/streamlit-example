@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 ENV = "staging"
 TABLE_NAME = f"parsel-backend-{ENV}"
 
-# For motivation see https://github.com/awsdocs/aws-doc-sdk-examples/blob/main/python/example_code/dynamodb/GettingStarted/scenario_getting_started_movies.py
+# For inspiration see https://github.com/awsdocs/aws-doc-sdk-examples/blob/main/python/example_code/dynamodb/GettingStarted/scenario_getting_started_movies.py
 class Items:
     """Encapsulates an Amazon DynamoDB table of items data."""
 
@@ -106,12 +106,21 @@ class Items:
             return None
 
     def query_user_by_email(self, email):
-        return self.query(Key("gsiPk").eq(f"user#{email}"), "gsi")["Items"][0]
+
+        try:
+            return benedict(
+                self.query(Key("gsiPk").eq(f"user#{email}"), "gsi")["Items"][0]
+            )
+        except Exception as exc:
+            return None
 
     def query_user_datasets(self, user_id):
-        return self.query(
-            Key("pk").eq(user_id) & Key("sk").begins_with("dataset"), None, False
-        )["Items"]
+        try:
+            return self.query(
+                Key("pk").eq(user_id) & Key("sk").begins_with("dataset"), None, False
+            )["Items"]
+        except Exception as exc:
+            return None
 
     def query(
         self,
