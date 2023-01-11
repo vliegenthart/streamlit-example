@@ -17,10 +17,11 @@ from botocore.exceptions import ClientError
 import logging
 import json
 from benedict import benedict
+import os
 
 logger = logging.getLogger(__name__)
 
-ENV = "staging"
+ENV = os.getenv("ENV", "staging")
 TABLE_NAME = f"parsel-backend-{ENV}"
 
 # For inspiration see https://github.com/awsdocs/aws-doc-sdk-examples/blob/main/python/example_code/dynamodb/GettingStarted/scenario_getting_started_movies.py
