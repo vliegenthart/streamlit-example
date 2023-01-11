@@ -138,10 +138,11 @@ class Items:
                 response = self.table.query(
                     IndexName=f"{self.table_name}-{index_name}",
                     KeyConditionExpression=key_condition_expression,
+                    Limit=100,
                 )
             else:
                 response = self.table.query(
-                    KeyConditionExpression=key_condition_expression,
+                    KeyConditionExpression=key_condition_expression, Limit=100
                 )
 
         except ClientError as err:
