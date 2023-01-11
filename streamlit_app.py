@@ -10,7 +10,7 @@ from benedict import benedict
 
 """
 # Parsel.ai Internal Analytics
-This tool is a Work in Progress. For internal use only.
+This tool is a Work in Progress. For internal use only. Please contact Daniel V. on Slack if you have questions.
 """
 
 items_table = Items()
