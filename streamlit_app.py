@@ -7,6 +7,7 @@ from dynamodb_class import Items, DecimalEncoder, create_presigned_url
 import json
 import datetime
 from benedict import benedict
+from copy import deepcopy
 
 """
 # Parsel.ai Internal Analytics
@@ -164,22 +165,80 @@ else:
             {key: item[key] for key in keys_to_extract if key in item}
             for item in datasets
         ]
+        st.write(
+            "TODO: Dont generate presigned links, add download button, order by newest first by default"
+        )
 
-        for dataset in datasets:
-            if type(dataset.get("outputs")) == list:
-                for output in dataset.get("outputs"):
-                    if output.get("s3Key"):
-                        dataset[
-                            f"output_{output.get('format')}"
-                        ] = create_presigned_url(output.get("s3Key"))
+        datasets = deepcopy(datasets)
+        # for dataset in datasets:
+        #     if type(dataset.get("outputs")) == list:
+        #         #     for output in dataset.get("outputs"):
+        #         #         if output.get("s3Key"):
+        #         #             dataset[
+        #         #                 f"output_{output.get('format')}"
+        #         #             ] = create_presigned_url(output.get("s3Key"))
 
-                dataset[f"input_document"] = create_presigned_url(dataset.get("key"))
+        #         #     dataset[f"input_document"] = create_presigned_url(dataset.get("key"))
 
-                del dataset["outputs"]
-                del dataset["key"]
+        #         del dataset["outputs"]
+        #     del dataset["key"]
 
         df = pd.json_normalize(datasets, max_level=1)
         df["createdAt"] = pd.to_datetime(df["createdAt"], unit="ms")
         df["updatedAt"] = pd.to_datetime(df["updatedAt"], unit="ms")
-
+        df = df.sort_values(by=["createdAt"], ascending=False)
+        df = df.reset_index()
         st.write(df)
+
+        user_email = st.text_input(
+            "Row index to download",
+            value=0,
+            max_chars=None,
+            key="row_index",
+            type="default",
+            help=None,
+            autocomplete=None,
+            on_change=None,
+            args=None,
+            kwargs=None,
+            placeholder=None,
+            disabled=False,
+            label_visibility="visible",
+        )
+
+        def download_index():
+            index = st.session_state.row_index
+
+            if index.isdigit():
+                if int(index) > df.shape[0]:
+                    st.warning(
+                        f"Row index too big, please select number between 1 and {df.shape[0]}"
+                    )
+                else:
+                    st.session_state.download_row = df.iloc[int(index)]
+            else:
+                st.warning("Not a valid row index")
+
+        st.button(
+            "Download outputs for row index",
+            key=None,
+            help=None,
+            on_click=download_index,
+            args=None,
+            kwargs=None,
+            type="secondary",
+            disabled=False,
+        )
+
+        if st.session_state.get("download_row") is not None:
+            outputs = st.session_state.get("download_row").get("outputs")
+            if outputs:
+
+                zip = [x for x in outputs if x["format"] == "ZIP"][0]
+                if zip.get("s3Key"):
+                    st.write(
+                        f'[Download ZIP for row {st.session_state.row_index}]({create_presigned_url(zip.get("s3Key"))})'
+                    )
+
+            else:
+                st.warning("This row index has no outputs available.")
