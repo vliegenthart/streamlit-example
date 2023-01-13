@@ -21,6 +21,11 @@ def get_user():
     return items_table.query_user_by_email(st.session_state.email_input)
 
 
+@st.cache
+def query_user_datasets(user_id):
+    return items_table.query_user_datasets(user_id)
+
+
 def epoch_to_human(epoch):
     return datetime.datetime.fromtimestamp(int(epoch) / 1000)
 
@@ -141,12 +146,12 @@ else:
 
         if is_enterprise:
             for user in enterprise_users:
-                datasets = datasets + items_table.query_user_datasets(user.get("pk"))
+                datasets = datasets + query_user_datasets(user.get("pk"))
     else:
 
         st.write("#### User's Datasets")
 
-        datasets = items_table.query_user_datasets(user.get("pk"))
+        datasets = query_user_datasets(user.get("pk"))
 
     keys_to_extract = [
         "fileName",
