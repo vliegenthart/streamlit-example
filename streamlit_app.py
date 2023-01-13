@@ -192,7 +192,7 @@ else:
     column_to_move = df.pop("outputs")
 
     # insert column with insert(location, column_name, column_value)
-    df.insert(21, "outputs", column_to_move)
+    df.insert(df.shape[1], "outputs", column_to_move)
 
     st.write(df)
 
